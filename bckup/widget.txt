@@ -1,0 +1,358 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:register/src/database/database.dart';
+import 'package:register/src/models/member.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+
+void main() {
+  sqfliteFfiInit();
+
+  runApp(const Register());
+}
+
+class Register extends StatelessWidget {
+  const Register({super.key});
+
+  @override
+  Widget build(context) {
+    return _RegisterWidget();
+  }
+}
+
+class _RegisterWidget extends StatefulWidget {
+  @override
+  State createState() => _RegisterWidgetState();
+}
+
+class _RegisterWidgetState extends State<_RegisterWidget> {
+  late Future<List<Map<String, dynamic>>> data;
+  bool register = false;
+  late Timer? timer;
+
+  int deleted = 0;
+
+  bool implyDelete = false;
+
+  List<Member> selection = [];
+
+  @override
+  void initState() {
+    data = RegisterDatabase().getAllMembers();
+
+    super.initState();
+  }
+
+  @override
+  void dispose() {
+    timer?.cancel();
+
+    super.dispose();
+  }
+
+  void initializeData() async {
+    setState(() {
+      data = RegisterDatabase().getAllMembers();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        backgroundColor: Colors.white,
+        appBar: AppBar(
+          elevation: 0,
+          backgroundColor: Colors.white,
+          flexibleSpace: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Text(
+              'selected: ${selection.length}',
+              style: const TextStyle(color: Colors.black),
+            ),
+          ),
+        ),
+        body: LayoutBuilder(builder: (context, BoxConstraints boxConstraints) {
+          return Padding(
+            padding: EdgeInsets.only(
+              top: (boxConstraints.maxWidth / 10),
+              left: (boxConstraints.maxWidth / 30),
+              right: (boxConstraints.maxWidth / 30),
+              bottom: (boxConstraints.maxWidth / 20),
+            ),
+            child: SizedBox(
+              width: boxConstraints.maxWidth,
+              height: boxConstraints.maxHeight,
+              child: Row(
+                mainAxisSize: MainAxisSize.max,
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  Flexible(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.max,
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      children: [
+                        Container(
+                            decoration: BoxDecoration(
+                              border: register
+                                  ? Border.all(style: BorderStyle.solid)
+                                  : null,
+                            ),
+                            child: RegisterMemberWidget(register: register)),
+                        TextButton(
+                          onPressed: () {},
+                          child: Text(
+                            'Filters'.toUpperCase(),
+                          ),
+                        )
+                      ],
+                    ),
+                  ),
+                  const Flexible(
+                    child: VerticalDivider(color: Colors.black),
+                  ),
+                  Flexible(
+                    flex: 3,
+                    child: MemeberDataWidget(selection: selection),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+}
+
+class MemeberDataWidget extends StatefulWidget {
+  List<Member> selection;
+  MemeberDataWidget({super.key, required this.selection});
+
+  @override
+  State<MemeberDataWidget> createState() => _MemeberDataWidgetState();
+}
+
+class _MemeberDataWidgetState extends State<MemeberDataWidget> {
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder(
+      future: RegisterDatabase().getAllMembers(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.done &&
+            snapshot.hasData) {
+          return ListView(
+            padding: const EdgeInsets.only(left: 100.0),
+            children: snapshot.data!.map((Map<String, dynamic> json) {
+              Member member = Member.fromJson(json);
+
+              return SizedBox(
+                height: 60,
+                child: Column(
+                  children: [
+                    Row(
+                        mainAxisSize: MainAxisSize.max,
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          Checkbox(
+                            value: widget.selection.any(
+                              (Member m) => m.id == member.id,
+                            ),
+                            onChanged: (value) {
+                              if (widget.selection
+                                  .any((Member m) => m.id == member.id)) {
+                                setState(() {
+                                  widget.selection.removeWhere(
+                                    (Member member) =>
+                                        member.id == Member.fromJson(json).id,
+                                  );
+
+                                  value = member.selected = false;
+                                });
+                              } else {
+                                setState(() {
+                                  widget.selection.add(
+                                    Member.fromJson(json),
+                                  );
+
+                                  value = member.selected = true;
+                                });
+                              }
+
+                              debugPrint(
+                                widget.selection.isNotEmpty
+                                    ? widget.selection[0].selected.toString()
+                                    : 'not found',
+                              );
+                            },
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(10.0),
+                            child: Text(Member.fromJson(json).name),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(10.0),
+                            child: Text(Member.fromJson(json).idNumber),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(10.0),
+                            child: Text(Member.fromJson(json).telephoneNumber),
+                          ),
+                          IconButton(
+                            onPressed: () async {
+                              var date = await showDatePicker(
+                                context: context,
+                                onDatePickerModeChange: (value) {
+                                  debugPrint(value.toString());
+                                },
+                                initialDate: DateTime.now(),
+                                firstDate: DateTime(
+                                  2022,
+                                  1,
+                                ),
+                                lastDate: DateTime.now(),
+                              );
+                              if (date == null) return;
+                            },
+                            icon: Transform.rotate(
+                              angle: -55,
+                              child: const Icon(Icons.arrow_forward_ios_sharp),
+                            ),
+                          ),
+                        ]),
+                    const Flexible(
+                      child: Divider(
+                        color: Color.fromARGB(255, 202, 122, 255),
+                      ),
+                    )
+                  ],
+                ),
+              );
+            }).toList(),
+          );
+        }
+        return const Text('no members found');
+      },
+    );
+  }
+}
+
+class RegisterMemberWidget extends StatefulWidget {
+  bool register;
+  RegisterMemberWidget({super.key, required this.register});
+
+  @override
+  State<RegisterMemberWidget> createState() => _RegisterMemberWidgetState();
+}
+
+class _RegisterMemberWidgetState extends State<RegisterMemberWidget> {
+  late TextEditingController _nameController,
+      _idNumberController,
+      _telephoneNumberController;
+
+  @override
+  void initState() {
+    _nameController = TextEditingController();
+    _idNumberController = TextEditingController();
+    _telephoneNumberController = TextEditingController();
+    super.initState();
+  }
+
+  void validateInput(TextEditingController editingController) {
+    if (editingController.text.isEmpty) return;
+  }
+
+  void notifyMemberSaved(int saved) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          saved > 0 ? 'saved' : 'error saving user',
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    bool register = widget.register;
+
+    if (widget.register) {
+      return Column(
+        mainAxisSize: MainAxisSize.max,
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          TextField(
+            controller: _nameController,
+            decoration: const InputDecoration(
+              hintText: 'enter member name',
+            ),
+          ),
+          TextField(
+            controller: _idNumberController,
+            decoration: const InputDecoration(
+              hintText: 'enter ID number',
+            ),
+          ),
+          TextField(
+            controller: _telephoneNumberController,
+            decoration: const InputDecoration(
+              hintText: 'Enter telephone number',
+            ),
+          ),
+          Row(
+              mainAxisSize: MainAxisSize.max,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                IconButton(
+                  onPressed: () async {
+                    validateInput(_nameController);
+
+                    validateInput(_idNumberController);
+
+                    validateInput(_telephoneNumberController);
+
+                    int saved = await RegisterDatabase().addUser(
+                      Member(
+                        name: _nameController.text.trim(),
+                        idNumber: _idNumberController.text.trim(),
+                        telephoneNumber: _telephoneNumberController.text.trim(),
+                      ),
+                    );
+                    _RegisterWidgetState().initializeData();
+
+                    notifyMemberSaved(saved);
+                  },
+                  icon: const Icon(Icons.save_alt),
+                ),
+                IconButton(
+                  onPressed: () => setState(() {
+                    register = false;
+                  }),
+                  icon: const Icon(Icons.close),
+                ),
+              ])
+        ]
+            .map(
+              (child) =>
+                  Padding(padding: const EdgeInsets.all(8.0), child: child),
+            )
+            .toList(),
+      );
+    }
+
+    return TextButton(
+      child: Text(
+        'register a new member'.toUpperCase(),
+      ),
+      onPressed: () {
+        setState(() {
+          register = register != true ? true : register;
+
+          debugPrint(register.toString());
+        });
+      },
+    );
+  }
+}

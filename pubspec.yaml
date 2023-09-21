@@ -1,0 +1,32 @@
+name: register
+description: A new Flutter project.
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: '>=3.1.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  path_provider: ^2.1.1
+  path_provider_windows: ^2.2.1
+  sqflite: ^2.3.0
+  sqflite_common_ffi: ^2.3.0+2
+  intl:
+  msix: ^3.16.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.0
+
+flutter:
+  uses-material-design: true
+
+msix_config:
+  - display_name: register
+  - msix_version: 1.0.0.0
+  - logo_path: assets/logo/icon.jpg
+  - publisher: CN=PublisherName, O=Msix
+  - sign_msix: false
